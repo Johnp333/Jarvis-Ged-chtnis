@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>JARVIS · Gedächtnis V0.1</title>
+<style>
+:root { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; color-scheme: light; --bg:#f5f7fa; --paper:#ffffff; --ink:#152131; --muted:#566575; --line:#dbe1e8; --accent:#165f69; --soft:#eaf5f5; --danger:#a22b2b; --shadow:0 6px 18px rgba(16,35,44,.045); }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); line-height:1.45; }
+button, input, select, textarea { font:inherit; }
+button { cursor:pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:3px solid #55b1bb; outline-offset:2px; }
+.shell { max-width:1060px; margin:auto; padding:22px 16px 72px; }
+.top { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:18px; }
+.brand { display:flex; align-items:center; gap:11px; }
+.logo { width:42px; height:42px; display:grid; place-items:center; border-radius:12px; background:#152f3b; color:#fff; font-weight:800; letter-spacing:.08em; }
+h1 { font-size:1.24rem; margin:0; letter-spacing:-.02em; }
+.sub { margin:2px 0 0; color:var(--muted); font-size:.87rem; }
+.version { padding:6px 10px; font-size:.76rem; background:var(--soft); color:var(--accent); border-radius:100px; font-weight:700; }
+.notice { border:1px solid #e1cda1; background:#fff9e9; color:#665221; padding:12px 14px; border-radius:12px; margin:0 0 18px; font-size:.87rem; }
+.layout { display:grid; grid-template-columns: .93fr 1.2fr; gap:16px; align-items:start; }
+.panel { background:var(--paper); border:1px solid var(--line); border-radius:17px; box-shadow:var(--shadow); padding:20px; }
+.panel h2 { font-size:1.07rem; margin:0 0 4px; }
+.explain { color:var(--muted); font-size:.86rem; margin:0 0 18px; }
+.field { display:block; margin-bottom:15px; }
+.field > span { display:block; margin-bottom:5px; font-size:.82rem; font-weight:700; }
+.field input,.field select,.field textarea,.filter input,.filter select { width:100%; background:#fff; color:var(--ink); border:1px solid #b9c6d1; border-radius:10px; padding:11px; min-height:44px; }
+.field textarea { min-height:136px; resize:vertical; }
+.actions { display:flex; flex-wrap:wrap; gap:8px; }
+.primary { background:var(--accent); color:white; border:1px solid var(--accent); border-radius:9px; padding:11px 15px; font-weight:700; min-height:44px; }
+.secondary { color:var(--ink); background:white; border:1px solid #c6d1da; border-radius:9px; padding:10px 13px; min-height:42px; }
+.danger { color:var(--danger); }
+button:hover { filter:brightness(.96); }
+.controls { display:grid; grid-template-columns:1fr 160px; gap:8px; margin:14px 0; }
+.filter input, .filter select { min-width:0; }
+.metahead { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.count { font-size:.82rem; color:var(--muted); white-space:nowrap; }
+.list { display:grid; gap:10px; }
+.memory { border:1px solid var(--line); border-radius:12px; padding:14px; background:#fff; }
+.memory-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.memory h3 { font-size:.98rem; margin:0 0 6px; overflow-wrap:anywhere; }
+.pill { font-size:.71rem; color:var(--accent); background:var(--soft); padding:4px 7px; border-radius:7px; white-space:nowrap; }
+.memory p { white-space:pre-wrap; overflow-wrap:anywhere; margin:6px 0 12px; color:#364657; font-size:.9rem; }
+.date { font-size:.72rem; color:var(--muted); margin-bottom:10px; }
+.memory .actions button { font-size:.8rem; min-height:34px; padding:6px 9px; }
+.empty { border:1px dashed #abb7c3; padding:24px 12px; border-radius:12px; color:var(--muted); text-align:center; font-size:.91rem; }
+.backup { margin-top:16px; }
+.backup p { font-size:.84rem; color:var(--muted); margin:8px 0 13px; }
+.report { margin-top:14px; padding:11px; border:1px solid var(--line); border-radius:10px; color:#42566a; background:#f8fafc; font-size:.8rem; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+#toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#17343d; color:white; padding:12px 16px; border-radius:12px; box-shadow:0 5px 20px #0003; z-index:50; display:none; max-width:90%; font-size:.88rem; }
+#toast[role=alert] { display:block; }
+@media(max-width:700px) { .layout { grid-template-columns:1fr; } .panel { padding:16px; } .controls{grid-template-columns:1fr;} .shell{padding-top:16px;} }
+@media(prefers-color-scheme:dark){ :root{ color-scheme:dark; --bg:#0e171d; --paper:#17232b; --ink:#edf4f7; --muted:#a9bac7; --line:#344550; --accent:#84d8d5; --soft:#253e42; --danger:#ffa9a9; --shadow:none; } .logo{background:#284a55;} .notice{background:#3a3120;color:#f6dfb7;border-color:#73613a;} .field input,.field select,.field textarea,.filter input,.filter select,.memory {background:#17232b;color:var(--ink);border-color:#506270;} .memory p{color:#d0dde4;} .secondary{background:#1b2932;color:var(--ink);border-color:#506270;} .primary{background:#236c73;color:#fff;border-color:#236c73;} .report{background:#1d303b;color:#c1d8e4;} #toast{background:#d6f3f0;color:#122d30;} }
+</style>
+</head>
+<body>
+<div class="shell">
+ <header class="top">
+  <div class="brand"><div class="logo" aria-hidden="true">J</div><div><h1>JARVIS · Gedächtnis</h1><p class="sub">Erster Prototyp · private Testversion</p></div></div>
+  <span class="version">Version 0.1</span>
+ </header>
+ <p class="notice"><strong>Nur mit Testdaten verwenden.</strong> Die Einträge bleiben in diesem Browser gespeichert, nicht in Claude oder einer Cloud. Noch keine Verschlüsselung, keine automatische Gesprächsanalyse und keine geräteübergreifende Synchronisierung. Keine Gesundheits-, Finanz-, Zugangs- oder Kundendaten eingeben.</p>
+ <main class="layout">
+  <section class="panel" aria-labelledby="form-title">
+   <h2 id="form-title">Neue Erinnerung</h2>
+   <p class="explain">Trage eine Information ein. Sie bleibt nach dem Schließen des Browsers normalerweise erhalten. Sichere sie zusätzlich als Datei.</p>
+   <form id="memory-form">
+    <label class="field"><span>Überschrift</span><input id="memory-title" autocomplete="off" maxlength="120" placeholder="z. B. Wochenplanung" required></label>
+    <label class="field"><span>Kategorie</span><select id="memory-category"><option>Persönliches</option><option>Projekte</option><option>Aufgaben und Termine</option><option>Entscheidungen</option></select></label>
+    <label class="field"><span>Inhalt</span><textarea id="memory-content" maxlength="4000" placeholder="Was soll Jarvis sich merken?" required></textarea></label>
+    <div class="actions"><button class="primary" type="submit" id="save-button">Erinnerung speichern</button><button class="secondary" type="button" id="cancel-button" hidden>Bearbeitung abbrechen</button></div>
+   </form>
+  </section>
+  <section class="panel" aria-labelledby="list-title">
+   <div class="metahead"><h2 id="list-title">Gespeicherte Erinnerungen</h2><span class="count" id="memory-count">0 Einträge</span></div>
+   <p class="explain">Suche nach Stichwörtern, bearbeite Einträge oder markiere sie zur Prüfung.</p>
+   <div class="controls filter"><label><span class="sr-only">Erinnerungen durchsuchen</span><input id="search" type="search" placeholder="Erinnerungen durchsuchen …"></label><label><span class="sr-only">Kategorie filtern</span><select id="category-filter"><option value="">Alle Kategorien</option><option>Persönliches</option><option>Projekte</option><option>Aufgaben und Termine</option><option>Entscheidungen</option></select></label></div>
+   <div id="memory-list" class="list" aria-live="polite"></div>
+  </section>
+ </main>
+ <section class="panel backup" aria-labelledby="backup-title">
+  <h2 id="backup-title">Datensicherung</h2>
+  <p>Exportiere eine Sicherung als JSON-Datei. Damit kannst du deine Testeinträge später wiederherstellen. In dieser ersten Version startest du die Sicherung noch selbst.</p>
+  <div class="actions"><button type="button" class="primary" id="export-button">Backup herunterladen</button><button type="button" class="secondary" id="import-button">Backup wiederherstellen</button><input id="import-file" type="file" accept=".json,application/json" hidden></div>
+  <div id="backup-report" class="report" aria-live="polite">Noch kein Backup in diesem Browser erfasst.</div>
+ </section>
+</div>
+<div id="toast" aria-live="assertive"></div>
+<script>
+(function () {
+  'use strict';
+  const STORAGE = 'jarvis:private:memory:v0.1';
+  const BACKUP = 'jarvis:private:lastbackup:v0.1';
+  const categories = ['Persönliches', 'Projekte', 'Aufgaben und Termine', 'Entscheidungen'];
+  const $ = id => document.getElementById(id);
+  const el = (tag, className, value) => {const n=document.createElement(tag);if(className)n.className=className;if(value!==undefined)n.textContent=value;return n;};
+  let memories=[];
+  let editId=null;
+  let toastTimer;
+  let storedBackup=null;
+  function notify(message){const n=$('toast');n.textContent=message;n.setAttribute('role','alert');clearTimeout(toastTimer);toastTimer=setTimeout(()=>n.removeAttribute('role'),3500);}
+  function newId(){ if(window.crypto && typeof window.crypto.randomUUID==='function')return window.crypto.randomUUID();return String(Date.now())+'-'+Math.random().toString(36).slice(2); }
+  function safeDate(iso){const d=new Date(iso);return Number.isNaN(d.getTime())?'Unbekannt':d.toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'});}
+  function validateItem(obj){return obj && typeof obj==='object' && typeof obj.id==='string' && obj.id.length<150 && typeof obj.title==='string' && obj.title.length<=120 && typeof obj.content==='string' && obj.content.length<=4000 && categories.includes(obj.category) && ['aktuell','prüfen'].includes(obj.status) && typeof obj.createdAt==='string' && typeof obj.updatedAt==='string';}
+  function validateList(list){return Array.isArray(list) && list.length<=5000 && list.every(validateItem) && new Set(list.map(a=>a.id)).size===list.length;}
+  function saveData(next){try{localStorage.setItem(STORAGE,JSON.stringify(next));memories=next;return true;}catch(e){alert('Speichern fehlgeschlagen. Der Browserspeicher ist möglicherweise voll oder gesperrt. Bitte sichere deine Daten und versuche es erneut.');return false;}}
+  function readData(){try{const raw=localStorage.getItem(STORAGE);if(!raw)return [];const p=JSON.parse(raw);if(validateList(p))return p;alert('Vorhandene Einträge haben ein ungültiges Format. Sie werden nicht überschrieben.');return [];}catch(e){alert('Gespeicherte Einträge konnten nicht gelesen werden.');return [];}}
+  function updateBackupReport(){const count=memories.length;const last=storedBackup?safeDate(storedBackup):'Noch keine Sicherung erfasst';$('backup-report').textContent='Erinnerungen: '+count+' · Letzter Backup-Export: '+last+'. Sichere die heruntergeladene Datei an einem geschützten Ort.';}
+  function render(){
+    const q=$('search').value.trim().toLocaleLowerCase('de');const cat=$('category-filter').value;
+    const filtered=memories.filter(m=>(!cat||m.category===cat)&&(!q||(m.title+' '+m.content+' '+m.category).toLocaleLowerCase('de').includes(q))).slice().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
+    $('memory-count').textContent=memories.length+' '+(memories.length===1?'Eintrag':'Einträge');
+    const list=$('memory-list');list.replaceChildren();
+    if(!filtered.length){list.appendChild(el('div','empty',memories.length?'Keine passenden Erinnerungen gefunden.':'Noch keine Erinnerungen gespeichert. Erstelle links deinen ersten Testeintrag.'));}
+    for(const m of filtered){
+      const article=el('article','memory');const top=el('div','memory-top');const h=el('h3','',m.title);const tag=el('span','pill',m.category+(m.status==='prüfen'?' · prüfen':''));top.append(h,tag);
+      const text=el('p','',m.content);
+      const d=el('div','date','Erstellt: '+safeDate(m.createdAt)+' · Geändert: '+safeDate(m.updatedAt));
+      const bar=el('div','actions');
+      const edit=el('button','secondary','Bearbeiten');edit.type='button';edit.addEventListener('click',()=>startEdit(m.id));
+      const mark=el('button','secondary',m.status==='prüfen'?'Als aktuell markieren':'Zur Prüfung markieren');mark.type='button';mark.addEventListener('click',()=>toggleStatus(m.id));
+      const del=el('button','secondary danger','Löschen');del.type='button';del.addEventListener('click',()=>deleteMemory(m.id));
+      bar.append(edit,mark,del);article.append(top,text,d,bar);list.appendChild(article);
+    }
+    updateBackupReport();
+  }
+  function resetForm(){editId=null;$('memory-form').reset();$('form-title').textContent='Neue Erinnerung';$('save-button').textContent='Erinnerung speichern';$('cancel-button').hidden=true;}
+  function startEdit(id){const m=memories.find(m=>m.id===id);if(!m)return;editId=id;$('memory-title').value=m.title;$('memory-category').value=m.category;$('memory-content').value=m.content;$('form-title').textContent='Erinnerung bearbeiten';$('save-button').textContent='Änderung speichern';$('cancel-button').hidden=false;$('memory-title').focus();window.scrollTo({top:0,behavior:'smooth'});}
+  function toggleStatus(id){const next=memories.map(m=>m.id===id?{...m,status:m.status==='prüfen'?'aktuell':'prüfen',updatedAt:new Date().toISOString()}:m);if(saveData(next)){notify('Status aktualisiert.');render();}}
+  function deleteMemory(id){const m=memories.find(m=>m.id===id);if(!m)return;if(!confirm('Möchtest du die Erinnerung „'+m.title+'“ wirklich löschen? Der Löschvorgang lässt sich nur mit einem früheren Backup rückgängig machen.'))return;
+    if(saveData(memories.filter(m=>m.id!==id))){if(editId===id)resetForm();notify('Erinnerung gelöscht.');render();}}
+  $('memory-form').addEventListener('submit',e=>{
+    e.preventDefault();const title=$('memory-title').value.trim();const content=$('memory-content').value.trim();const category=$('memory-category').value;if(!title||!content||!categories.includes(category))return;
+    const now=new Date().toISOString();let next;
+    if(editId){const existing=memories.find(m=>m.id===editId);if(!existing){resetForm();return;}next=memories.map(m=>m.id===editId?{...m,title,content,category,updatedAt:now}:m);}
+    else{if(memories.length>=5000){alert('Maximale Anzahl von Testeinträgen erreicht.');return;}next=[...memories,{id:newId(),title,content,category,status:'aktuell',source:'manuell',createdAt:now,updatedAt:now}];}
+    if(saveData(next)){resetForm();notify('Erinnerung gespeichert.');render();}
+  });
+  $('cancel-button').addEventListener('click',resetForm);
+  $('search').addEventListener('input',render);
+  $('category-filter').addEventListener('change',render);
+  $('export-button').addEventListener('click',()=>{
+    const backup={format:'jarvis-memory-backup',version:1,exportedAt:new Date().toISOString(),workspace:'private',memories};
+    const json=JSON.stringify(backup,null,2);const blob=new Blob([json],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='JARVIS_Backup_'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+    try{storedBackup=backup.exportedAt;localStorage.setItem(BACKUP,storedBackup);}catch(e){}updateBackupReport();notify('Backup-Download gestartet. Prüfe, ob die Datei gespeichert wurde.');
+  });
+  $('import-button').addEventListener('click',()=>$('import-file').click());
+  $('import-file').addEventListener('change',async e=>{
+    const file=e.target.files && e.target.files[0];e.target.value='';if(!file)return;
+    if(file.size>3*1024*1024){alert('Die Backup-Datei ist zu groß.');return;}
+    let parsed;try{parsed=JSON.parse(await file.text());}catch(err){alert('Datei ist kein gültiges JSON-Backup.');return;}
+    if(!parsed||parsed.format!=='jarvis-memory-backup'||parsed.version!==1||parsed.workspace!=='private'||!validateList(parsed.memories)){alert('Das Backup hat ein unbekanntes oder ungültiges Format.');return;}
+    if(!confirm('Backup mit '+parsed.memories.length+' Erinnerungen wiederherstellen? Alle '+memories.length+' aktuell gespeicherten Erinnerungen werden ersetzt. Sichere die aktuellen Daten vorher!'))return;
+    if(saveData(parsed.memories)) {resetForm();$('search').value='';$('category-filter').value='';render();notify('Backup erfolgreich wiederhergestellt.');}
+  });
+  memories=readData();try{storedBackup=localStorage.getItem(BACKUP);}catch(e){}render();
+})();
+</script>
+</body>
+</html>
