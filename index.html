@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>JARVIS · Gedächtnis V0.1</title>
+<title>JARVIS · Gedächtnis V0.2</title>
 <style>
 :root { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; color-scheme: light; --bg:#f5f7fa; --paper:#ffffff; --ink:#152131; --muted:#566575; --line:#dbe1e8; --accent:#165f69; --soft:#eaf5f5; --danger:#a22b2b; --shadow:0 6px 18px rgba(16,35,44,.045); }
 * { box-sizing: border-box; }
@@ -54,15 +54,45 @@ button:hover { filter:brightness(.96); }
 #toast[role=alert] { display:block; }
 @media(max-width:700px) { .layout { grid-template-columns:1fr; } .panel { padding:16px; } .controls{grid-template-columns:1fr;} .shell{padding-top:16px;} }
 @media(prefers-color-scheme:dark){ :root{ color-scheme:dark; --bg:#0e171d; --paper:#17232b; --ink:#edf4f7; --muted:#a9bac7; --line:#344550; --accent:#84d8d5; --soft:#253e42; --danger:#ffa9a9; --shadow:none; } .logo{background:#284a55;} .notice{background:#3a3120;color:#f6dfb7;border-color:#73613a;} .field input,.field select,.field textarea,.filter input,.filter select,.memory {background:#17232b;color:var(--ink);border-color:#506270;} .memory p{color:#d0dde4;} .secondary{background:#1b2932;color:var(--ink);border-color:#506270;} .primary{background:#236c73;color:#fff;border-color:#236c73;} .report{background:#1d303b;color:#c1d8e4;} #toast{background:#d6f3f0;color:#122d30;} }
+
+.chat-panel { margin-bottom:16px; }
+.chat-log { display:flex; flex-direction:column; gap:10px; max-height:320px; overflow-y:auto; border:1px solid var(--line); border-radius:12px; padding:13px; background:var(--bg); margin:12px 0; }
+.chat-bubble { max-width:90%; padding:10px 13px; border-radius:12px; font-size:.9rem; overflow-wrap:anywhere; white-space:pre-wrap; line-height:1.5; }
+.chat-bubble.jarvis { align-self:flex-start; background:var(--paper); border:1px solid var(--line); }
+.chat-bubble.user { align-self:flex-end; background:var(--soft); border:1px solid var(--line); }
+.chat-entry { display:flex; gap:8px; }
+.chat-entry input { flex:1; min-width:0; background:var(--paper); color:var(--ink); border:1px solid #b9c6d1; border-radius:10px; padding:11px; min-height:44px; }
+.chat-pending { margin-top:12px; background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:12px; }
+.chat-pending p { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.89rem; }
+@media(max-width:500px) { .chat-entry {flex-direction:column;} .chat-bubble{max-width:100%;} }
+@media(prefers-color-scheme:dark) { .chat-entry input {border-color:#506270;} }
 </style>
 </head>
 <body>
 <div class="shell">
  <header class="top">
   <div class="brand"><div class="logo" aria-hidden="true">J</div><div><h1>JARVIS · Gedächtnis</h1><p class="sub">Erster Prototyp · private Testversion</p></div></div>
-  <span class="version">Version 0.1</span>
+  <span class="version">Version 0.2</span>
  </header>
- <p class="notice"><strong>Nur mit Testdaten verwenden.</strong> Die Einträge bleiben in diesem Browser gespeichert, nicht in Claude oder einer Cloud. Noch keine Verschlüsselung, keine automatische Gesprächsanalyse und keine geräteübergreifende Synchronisierung. Keine Gesundheits-, Finanz-, Zugangs- oder Kundendaten eingeben.</p>
+ <p class="notice"><strong>Nur mit Testdaten verwenden.</strong> Die Einträge bleiben in diesem Browser gespeichert, nicht in Claude oder einer Cloud. Der Demo-Chat arbeitet nur mit festen Such- und Speicherregeln, ohne KI. Noch keine Verschlüsselung, keine automatische Gesprächsanalyse und keine geräteübergreifende Synchronisierung. Keine Gesundheits-, Finanz-, Zugangs- oder Kundendaten eingeben.</p>
+
+ <section class="panel chat-panel" aria-labelledby="chat-title">
+  <h2 id="chat-title">Mit Jarvis sprechen – Demo</h2>
+  <p class="explain">Erste Gesprächsoberfläche ohne KI-Anbindung. Jarvis kann deine Test-Erinnerungen durchsuchen und nach deiner Bestätigung neue Testeinträge anlegen. Dieser Gesprächsverlauf wird nicht gespeichert.</p>
+  <div id="chat-log" class="chat-log" aria-live="polite" aria-label="Gespräch mit Jarvis">
+   <div class="chat-bubble jarvis">Hallo! Frage mich zum Beispiel: „Was weißt du über Apollo?“ Oder schreibe: „Merke dir: Ich teste mein Projekt am Donnerstag.“</div>
+  </div>
+  <form id="chat-form" class="chat-entry">
+   <label class="sr-only" for="chat-input">Nachricht an Jarvis</label>
+   <input id="chat-input" maxlength="600" autocomplete="off" placeholder="Was weißt du über Apollo?" required>
+   <button class="primary" type="submit">Senden</button>
+  </form>
+  <div class="chat-pending" id="chat-pending" hidden>
+   <strong>Speichervorschlag</strong>
+   <p id="chat-pending-text"></p>
+   <div class="actions"><button type="button" id="chat-confirm" class="primary">Test-Erinnerung speichern</button><button type="button" id="chat-reject" class="secondary">Verwerfen</button></div>
+  </div>
+ </section>
  <main class="layout">
   <section class="panel" aria-labelledby="form-title">
    <h2 id="form-title">Neue Erinnerung</h2>
@@ -156,6 +186,61 @@ button:hover { filter:brightness(.96); }
     if(!confirm('Backup mit '+parsed.memories.length+' Erinnerungen wiederherstellen? Alle '+memories.length+' aktuell gespeicherten Erinnerungen werden ersetzt. Sichere die aktuellen Daten vorher!'))return;
     if(saveData(parsed.memories)) {resetForm();$('search').value='';$('category-filter').value='';render();notify('Backup erfolgreich wiederhergestellt.');}
   });
+
+  // V0.2: Bewusst regelbasierter Demo-Chat, kein KI-Modell und keine API.
+  // Chat-Nachrichten werden NICHT gespeichert; Erinnerungen erst nach Freigabe.
+  let pendingChatMemory=null;
+  const searchStopwords=new Set(['was','weisst','weißt','du','ueber','über','mir','mein','meine','meinen','meinem','ich','zu','dem','der','die','das','ein','eine','einen','gibt','es','noch','bitte','suche','finde','nach','erinnerung','erinnerungen','jarvis','und','ist','sind','von','mit','für','fur','an','den','wie','welche','welcher']);
+  function appendChat(who,message){
+    const node=el('div','chat-bubble '+who,message);
+    $('chat-log').appendChild(node); $('chat-log').scrollTop=$('chat-log').scrollHeight;
+  }
+  function hideChatPending(){pendingChatMemory=null;$('chat-pending').hidden=true;$('chat-pending-text').textContent='';}
+  function answerFromMemory(query){
+    const terms=query.toLocaleLowerCase('de').replace(/[^\p{L}\p{N}]+/gu,' ').split(' ').filter(w=>w.length>=3&&!searchStopwords.has(w));
+    if(!terms.length){appendChat('jarvis','Nenne mir bitte einen Suchbegriff, zum Beispiel „Apollo“.');return;}
+    const matching=memories.filter(m=>{
+      const hay=(m.title+' '+m.content+' '+m.category).toLocaleLowerCase('de');
+      return terms.some(t=>hay.includes(t));
+    }).slice(0,5);
+    if(!matching.length){appendChat('jarvis','Zu „'+terms.join(', ')+'“ habe ich keine passende Test-Erinnerung gefunden.');return;}
+    appendChat('jarvis','Ich habe '+matching.length+' passende Test-Erinnerung(en) gefunden:\n\n'+matching.map(m=>'• '+m.title+': '+m.content).join('\n\n')+'\n\nQuelle: gespeicherte Erinnerungen in diesem Browser.');
+  }
+  $('chat-form').addEventListener('submit', e=>{
+    e.preventDefault();const input=$('chat-input');const message=input.value.trim();if(!message)return;
+    input.value='';appendChat('user',message);hideChatPending();
+    const remember=message.match(/^merke(?:\s+dir)?\s*:\s*(.+)$/is);
+    if(remember){
+      const statement=remember[1].trim();
+      if(statement.length<5){appendChat('jarvis','Die Erinnerung ist zu kurz. Beschreibe bitte eine vollständige Testinformation.');return;}
+      pendingChatMemory=statement.slice(0,4000);
+      $('chat-pending-text').textContent=pendingChatMemory;
+      $('chat-pending').hidden=false;
+      appendChat('jarvis','Ich kann daraus eine Test-Erinnerung anlegen. Ich speichere sie erst, wenn du unten bestätigst. Keine persönlichen oder sensiblen Daten eingeben.');return;
+    }
+    if(/\b(zeige|liste|alle)\b/i.test(message) && /\berinnerungen\b/i.test(message) && !/\b(über|ueber|zu)\b/i.test(message)){
+      if(!memories.length){appendChat('jarvis','Es sind noch keine Test-Erinnerungen gespeichert.');return;}
+      appendChat('jarvis','Deine ersten '+Math.min(memories.length,5)+' Test-Erinnerung(en):\n'+memories.slice(0,5).map(m=>'• '+m.title).join('\n'));return;
+    }
+    if(/\b(loesch|lösch|entfern|vergiss|delete|lösche)\b/i.test(message)){
+      appendChat('jarvis','Ich lösche über das Chatfeld nichts. Benutze bei der entsprechenden Erinnerung die Schaltfläche „Löschen“ und bestätige den Vorgang.');return;
+    }
+    if(/\b(suche|finde|weißt|weisst|erinnerst|über|ueber)\b/i.test(message) || /^apollo\b/i.test(message)){
+      answerFromMemory(message);return;
+    }
+    appendChat('jarvis','Ich bin hier noch eine regelbasierte Demo ohne echtes KI-Modell. Du kannst fragen „Was weißt du über Apollo?“ oder mit „Merke dir: ...“ eine Test-Erinnerung zur Bestätigung vorschlagen.');
+  });
+  $('chat-reject').addEventListener('click',()=>{hideChatPending();appendChat('jarvis','Speichervorschlag verworfen.');});
+  $('chat-confirm').addEventListener('click',()=>{
+    if(!pendingChatMemory)return;
+    if(memories.length>=5000){appendChat('jarvis','Zu viele Testeinträge vorhanden.');hideChatPending();return;}
+    const statement=pendingChatMemory;
+    const title=statement.length>54?statement.slice(0,51)+'...':statement;
+    const now=new Date().toISOString();
+    const next=[...memories,{id:newId(),title,content:statement,category:'Persönliches',status:'aktuell',source:'chat (bestätigt)',createdAt:now,updatedAt:now}];
+    if(saveData(next)) {appendChat('jarvis','Test-Erinnerung nach deiner Bestätigung gespeichert. Du findest sie rechts in der Liste.');render();hideChatPending();}
+  });
+
   memories=readData();try{storedBackup=localStorage.getItem(BACKUP);}catch(e){}render();
 })();
 </script>
