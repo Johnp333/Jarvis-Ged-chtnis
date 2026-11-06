@@ -331,5 +331,59 @@ button:hover { filter:brightness(.96); }
   }
 })();
 </script>
+
+<script>
+(() => {
+  const form = document.getElementById("memory-form");
+  const button = document.createElement("button");
+
+  button.type = "button";
+  button.className = "secondary";
+  button.textContent = "In Cloud speichern (Test)";
+  form.querySelector(".actions").appendChild(button);
+
+  button.addEventListener("click", async () => {
+    const title = document.getElementById("memory-title").value.trim();
+    const content = document.getElementById("memory-content").value.trim();
+    const category = document.getElementById("memory-category").value;
+
+    if (!title || !content) {
+      alert("Bitte Titel und Inhalt eingeben.");
+      return;
+    }
+
+    if (content.length > 2000) {
+      alert("Maximal 2000 Zeichen erlaubt.");
+      return;
+    }
+
+    if (!confirm("Testerinnerung in der Cloud speichern?")) return;
+
+    button.disabled = true;
+
+    try {
+      const response = await fetch("/api/memories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content, category })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.gespeichert) {
+        throw new Error(result.error || "Speichern fehlgeschlagen");
+      }
+
+      alert("In der Cloud gespeichert!");
+      location.reload();
+
+    } catch (error) {
+      alert("Fehler: " + error.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+})();
+</script>
 </body>
 </html>
