@@ -274,5 +274,62 @@ button:hover { filter:brightness(.96); }
   }
 })();
 </script>
+
+<script>
+(async function () {
+  const panel = document.createElement("section");
+  panel.className = "panel";
+  panel.style.marginTop = "16px";
+
+  const heading = document.createElement("h2");
+  heading.textContent = "Cloud-Erinnerungen (Test)";
+
+  const list = document.createElement("div");
+  list.className = "list";
+  list.textContent = "Lade Cloud-Erinnerungen ...";
+
+  panel.append(heading, list);
+  document.querySelector("main.layout").after(panel);
+
+  try {
+    const response = await fetch("/api/memories", {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data.erinnerungen)) {
+      throw new Error("Ungueltige Antwort");
+    }
+
+    list.replaceChildren();
+
+    if (data.erinnerungen.length === 0) {
+      list.textContent = "Keine Cloud-Erinnerungen vorhanden.";
+    }
+
+    for (const memory of data.erinnerungen) {
+      const item = document.createElement("article");
+      item.className = "memory";
+
+      const title = document.createElement("h3");
+      title.textContent = memory.title;
+
+      const content = document.createElement("p");
+      content.textContent = memory.content;
+
+      item.append(title, content);
+      list.append(item);
+    }
+  } catch (error) {
+    list.textContent =
+      "Cloud-Abfrage fehlgeschlagen: " + error.message;
+  }
+})();
+</script>
 </body>
 </html>
